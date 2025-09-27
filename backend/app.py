@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
-from extensions import db
+from supabase_client import get_supabase_manager
 
 # Load environment variables
 load_dotenv()
@@ -12,15 +12,6 @@ def create_app():
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'taxwise-secret-key-2024')
-    
-    # Database configuration - supports both PostgreSQL (Supabase) and SQLite
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith('postgres://'):
-        # Fix for Heroku/Supabase postgres URL
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///taxwise.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
     
@@ -32,8 +23,7 @@ def create_app():
     # Ensure upload directory exists
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
-    # Initialize extensions with app
-    db.init_app(app)
+    # Initialize CORS
     CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173'])
     
     # Register blueprints
@@ -74,13 +64,32 @@ def create_app():
             ]
         }
     
-    # Create database tables
+    # Initialize Supabase connection and check database schema
     with app.app_context():
         try:
-            db.create_all()
-            print("Database tables created successfully")
+            supabase_manager = get_supabase_manager()
+            connection_test = supabase_manager.test_connection()
+            
+            if connection_test:
+                print("✅ Supabase connection established successfully")
+                
+                # Check database schema
+                schema_check = supabase_manager.init_database_schema()
+                if schema_check['success']:
+                    print(f"� Database schema check completed")
+                    print(f"📂 Existing tables: {schema_check.get('existing_tables', [])}")
+                    if schema_check.get('missing_tables'):
+                        print(f"⚠️  Missing tables: {schema_check['missing_tables']}")
+                        print("� Please create these tables in your Supabase dashboard")
+                else:
+                    print(f"⚠️  Schema check warning: {schema_check.get('error', 'Unknown error')}")
+            else:
+                print("❌ Supabase connection failed")
+                print("🔧 Please check your Supabase credentials in .env file")
+                
         except Exception as e:
-            print(f"Error creating database tables: {e}")
+            print(f"❌ Error initializing Supabase: {e}")
+            print("� Please check your SUPABASE_URL and SUPABASE_KEY in .env file")
     
     return app
 
