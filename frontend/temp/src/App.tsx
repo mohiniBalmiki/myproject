@@ -4,6 +4,7 @@ import { Navigation } from "./components/Navigation";
 import { AuthModal } from "./components/AuthModal";
 import { AuthCallback } from "./components/AuthCallback";
 import { HeroSection } from "./components/HeroSection";
+import { DashboardSection } from "./components/DashboardSection";
 import { FeaturesSection } from "./components/FeaturesSection";
 import { UploadSection } from "./components/UploadSection";
 import { TaxOptimizerSection } from "./components/TaxOptimizerSection";
@@ -12,22 +13,26 @@ import { ReportsSection } from "./components/ReportsSection";
 import { ProfileSection } from "./components/ProfileSection";
 import { FAQSection } from "./components/FAQSection";
 import { Footer } from "./components/Footer";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Toaster } from "./components/ui/sonner";
 
 function MainApp() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user } = useAuth();
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleLogin = () => {
-    setIsLoggedIn(true);
+    setIsAuthModalOpen(false);
     setIsDemoMode(false);
   };
 
   const handleDemo = () => {
     setIsDemoMode(true);
-    setIsLoggedIn(false);
+    // Smooth scroll to features section
+    const element = document.querySelector('#features');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleExploreDemo = () => {
@@ -59,7 +64,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation 
-        isLoggedIn={isLoggedIn} 
+        isLoggedIn={!!user} 
         onLoginClick={handleLoginClick}
         onDemoClick={handleExploreDemo}
       />
@@ -72,17 +77,33 @@ function MainApp() {
       />
     
     <main>
-      <HeroSection 
-        onExploreDemo={handleExploreDemo}
-        onLoginClick={handleLoginClick}
-      />
-      <FeaturesSection />
-      <UploadSection />
-      <TaxOptimizerSection />
-      <CibilAdvisorSection />
-      <ReportsSection />
-      <ProfileSection />
-      <FAQSection />
+      {user ? (
+        // Authenticated user view with personalized dashboard
+        <>
+          <DashboardSection />
+          <UploadSection />
+          <TaxOptimizerSection />
+          <CibilAdvisorSection />
+          <ReportsSection />
+          <ProfileSection />
+          <FAQSection />
+        </>
+      ) : (
+        // Non-authenticated user view with hero section
+        <>
+          <HeroSection 
+            onExploreDemo={handleExploreDemo}
+            onLoginClick={handleLoginClick}
+          />
+          <FeaturesSection />
+          <UploadSection />
+          <TaxOptimizerSection />
+          <CibilAdvisorSection />
+          <ReportsSection />
+          <ProfileSection />
+          <FAQSection />
+        </>
+      )}
     </main>
     
     <Footer />

@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from supabase_client import get_supabase_manager
 import re
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +104,20 @@ def register():
                 
         except Exception as auth_error:
             logger.error(f"Supabase registration error: {auth_error}")
+            error_message = str(auth_error)
+            
+            # Provide more specific error messages
+            if "Error sending confirmation email" in error_message:
+                error_message = "Unable to send confirmation email. Please check your email configuration or contact support."
+            elif "SMTP" in error_message:
+                error_message = "Email service temporarily unavailable. Please try again later or contact support."
+            elif "duplicate" in error_message.lower():
+                error_message = "An account with this email already exists. Please try logging in instead."
+            
             return jsonify({
                 'success': False,
-                'error': str(auth_error)
+                'error': error_message,
+                'error_type': 'registration_failed'
             }), 400
             
     except Exception as e:
@@ -446,6 +458,95 @@ def resend_verification():
             
     except Exception as e:
         logger.error(f"Resend verification error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error'
+        }), 500
+
+@auth_bp.route('/register-dev', methods=['POST'])
+def register_dev():
+    """Development registration without email verification"""
+    try:
+        # Only allow in development mode
+        if os.environ.get('FLASK_ENV') != 'development':
+            return jsonify({
+                'success': False,
+                'error': 'This endpoint is only available in development mode'
+            }), 403
+        
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or not data.get('email') or not data.get('password'):
+            return jsonify({
+                'success': False,
+                'error': 'Email and password are required'
+            }), 400
+        
+        email = data['email'].lower().strip()
+        password = data['password']
+        name = data.get('name', '').strip()
+        
+        # Validate email format
+        if not validate_email(email):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid email format'
+            }), 400
+        
+        try:
+            # Get Supabase manager
+            supabase_manager = get_supabase_manager()
+            
+            # Create user using service client (bypasses email confirmation)
+            response = supabase_manager.service_client.auth.admin.create_user({
+                "email": email,
+                "password": password,
+                "email_confirm": True,  # Skip email confirmation
+                "user_metadata": {
+                    "name": name,
+                    "phone": data.get('phone', ''),
+                    "pan": data.get('pan', '').strip().upper()
+                }
+            })
+            
+            if response.user:
+                # Create user profile immediately
+                profile_data = {
+                    'email': email,
+                    'name': name,
+                    'phone': data.get('phone', ''),
+                    'pan': data.get('pan', '').strip().upper()
+                }
+                
+                profile_result = supabase_manager.create_user_profile(response.user.id, profile_data)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Registration successful! Account is ready to use.',
+                    'user': {
+                        'id': response.user.id,
+                        'email': response.user.email,
+                        'name': name,
+                        'email_confirmed': True
+                    },
+                    'requires_verification': False
+                }), 201
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Registration failed'
+                }), 400
+                
+        except Exception as auth_error:
+            logger.error(f"Dev registration error: {auth_error}")
+            return jsonify({
+                'success': False,
+                'error': 'Registration failed'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Dev registration error: {e}")
         return jsonify({
             'success': False,
             'error': 'Internal server error'

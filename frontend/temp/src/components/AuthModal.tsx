@@ -107,7 +107,7 @@ export function AuthModal({ isOpen, onClose, onLogin, onDemo }: AuthModalProps) 
     setIsSigningUp(true);
     
     try {
-      await signUp(signupEmail, signupPassword, signupName);
+      await signUp(signupEmail, signupPassword, signupName, { phone, pan });
       toast.success("Account created successfully!", {
         description: "Please check your email and click the verification link to activate your account."
       });
@@ -125,7 +125,52 @@ export function AuthModal({ isOpen, onClose, onLogin, onDemo }: AuthModalProps) 
       console.error('Signup error:', error);
       
       // Handle specific error messages
-      if (error.message?.includes('requires_verification')) {
+      if (error.message?.includes('confirmation email') || error.message?.includes('SMTP')) {
+        // SMTP error - offer development registration
+        toast.error("Email service unavailable", {
+          description: "Trying alternative registration method...",
+          duration: 2000
+        });
+        
+        // Try development registration as fallback
+        try {
+          const response = await fetch('/api/auth/register-dev', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: signupEmail,
+              password: signupPassword,
+              name: signupName,
+              phone,
+              pan
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            toast.success("Account created successfully!", {
+              description: "Your account is ready to use. No email verification required in development mode."
+            });
+            onClose();
+            
+            // Reset form
+            setSignupName("");
+            setSignupEmail("");
+            setSignupPassword("");
+            setPhone("");
+            setPan("");
+          } else {
+            throw new Error(data.error);
+          }
+        } catch (devError: any) {
+          toast.error("Registration failed", {
+            description: "Please contact support or try again later."
+          });
+        }
+      } else if (error.message?.includes('requires_verification')) {
         toast.info("Account created!", {
           description: "Please check your email and verify your account before logging in."
         });
