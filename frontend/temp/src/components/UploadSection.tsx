@@ -8,6 +8,9 @@ import { useState, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { DatabaseAPI, API_CONFIG } from "../utils/supabase/client";
 import { AIAnalysisService, Transaction } from "../utils/aiAnalysisService";
+import { LLMService } from "../utils/llmService";
+import { MLService } from "../utils/mlService";
+import AIInsights from "./AIInsights";
 import { toast } from "sonner";
 
 // AI Analysis Interfaces
@@ -29,6 +32,8 @@ interface AIAnalysisResult {
       investmentRate?: string;
       confidence?: number;
       frequency?: string;
+      mlEnhanced?: boolean;
+      anomalies?: any[];
     };
   };
   categories: { [key: string]: number };
@@ -55,6 +60,9 @@ interface AIAnalysisResult {
   };
   cibilFactors?: any;
   financialPatterns?: any[];
+  mlPredictions?: any;
+  mlPatterns?: any;
+  llmInsights?: any[];
 }
 
 interface ProcessedFile {
@@ -75,6 +83,8 @@ export function UploadSection() {
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [analysisTab, setAnalysisTab] = useState<"patterns" | "categories" | "insights">("patterns");
+  const [showAIInsights, setShowAIInsights] = useState(false);
+  const [processedTransactions, setProcessedTransactions] = useState<Transaction[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isValidFileType = (file: File): boolean => {
@@ -91,6 +101,12 @@ export function UploadSection() {
   // Advanced AI-Powered Analysis Functions
   const analyzeTransactionsWithAI = async (transactions: any[]): Promise<AIAnalysisResult> => {
     try {
+      // Initialize AI services
+      await Promise.all([
+        LLMService.initialize(),
+        MLService.initialize()
+      ]);
+
       // Convert backend transactions to AI service format
       const aiTransactions: Transaction[] = transactions.map(txn => ({
         id: txn.id || `txn_${Date.now()}_${Math.random()}`,
@@ -106,11 +122,38 @@ export function UploadSection() {
         tax_section: txn.tax_section
       }));
 
-      // Use AI service for advanced pattern analysis
+      // Store transactions for AI Insights component
+      setProcessedTransactions(aiTransactions);
+
+      // Use combined AI services for comprehensive analysis
       const financialPatterns = AIAnalysisService.analyzeSpendingPatterns(aiTransactions);
       const aiInsights = AIAnalysisService.generateAIInsights(aiTransactions, financialPatterns);
       const taxOptimizations = AIAnalysisService.generateTaxOptimization(aiTransactions);
       const cibilFactors = AIAnalysisService.analyzeCIBILFactors(aiTransactions, financialPatterns);
+
+      // Enhanced ML-powered categorization
+      const mlPredictions = await MLService.categorizeTransactionsBatch(
+        aiTransactions.map(t => ({ id: t.id, description: t.description, amount: t.amount }))
+      );
+
+      // Enhanced spending pattern analysis with ML
+      const mlPatterns = await MLService.analyzeSpendingPatternsML(aiTransactions);
+
+      // LLM-powered personalized insights
+      const financialContext = {
+        totalIncome: aiTransactions.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0),
+        totalExpenses: aiTransactions.filter(t => t.transaction_type === 'debit').reduce((sum, t) => sum + Math.abs(t.amount), 0),
+        savingsRate: 0, // Will be calculated below
+        categories: {},
+        patterns: [],
+        demographics: {},
+        goals: ['Tax Optimization', 'Wealth Building', 'Financial Security']
+      };
+      
+      financialContext.savingsRate = financialContext.totalIncome > 0 ? 
+        ((financialContext.totalIncome - financialContext.totalExpenses) / financialContext.totalIncome) * 100 : 0;
+
+      const llmInsights = await LLMService.generatePersonalizedInsights(financialContext);
 
       // Calculate summary metrics
       const totalIncome = aiTransactions
@@ -131,7 +174,9 @@ export function UploadSection() {
           amount: pattern.totalAmount,
           transactions: pattern.transactions,
           confidence: pattern.confidence,
-          frequency: pattern.frequency
+          frequency: pattern.frequency,
+          mlEnhanced: mlPatterns.clusters.some(c => c.name.toLowerCase().includes(key.toLowerCase())),
+          anomalies: mlPatterns.anomalies.filter(a => a.category === pattern.patternType)
         };
         
         // Add specific ratios for EMI and SIP
@@ -153,8 +198,8 @@ export function UploadSection() {
         categories[category] += txn.amount;
       });
 
-      // Convert insights to expected format
-      const insights = aiInsights.map(insight => ({
+      // Combine traditional AI insights with LLM insights
+      const combinedInsights = [...aiInsights.map(insight => ({
         type: insight.type,
         title: insight.title,
         description: insight.description,
@@ -162,7 +207,18 @@ export function UploadSection() {
         priority: insight.priority,
         actionable: insight.actionable,
         recommendations: insight.recommendations
-      }));
+      })), 
+      // Add LLM insights
+      ...llmInsights.map(llm => ({
+        type: llm.priority === 'high' ? 'critical' as const : 
+              llm.priority === 'medium' ? 'warning' as const : 'info' as const,
+        title: llm.title,
+        description: llm.description,
+        impact: llm.potentialImpact,
+        priority: llm.priority,
+        actionable: true,
+        recommendations: llm.actionableSteps
+      }))];
 
       // Convert tax optimizations to expected format
       const taxOptimization = {
@@ -204,10 +260,13 @@ export function UploadSection() {
         },
         patterns,
         categories,
-        insights,
+        insights: combinedInsights,
         taxOptimization,
-        cibilFactors, // Additional AI analysis
-        financialPatterns // Raw pattern data for advanced views
+        cibilFactors,
+        financialPatterns,
+        mlPredictions, // ML categorization results
+        mlPatterns, // ML pattern analysis
+        llmInsights // LLM personalized insights
       };
     } catch (error) {
       console.error('AI Analysis Error:', error);
@@ -378,9 +437,12 @@ export function UploadSection() {
             const analysis = await analyzeTransactionsWithAI(transactions);
             setTransactionAnalysis(analysis);
             
-            toast.success(`Successfully analyzed ${validFiles.length} file(s)!`, {
-              description: `Identified ${analysis.summary.totalTransactions} transactions with AI-powered categorization`
+            toast.success(`🤖 AI Analysis Complete!`, {
+              description: `Analyzed ${analysis.summary.totalTransactions} transactions with ML categorization and LLM insights`
             });
+            
+            // Auto-show AI insights for better UX
+            setTimeout(() => setShowAIInsights(true), 2000);
           } else {
             throw new Error('Failed to fetch transaction data');
           }
@@ -558,14 +620,24 @@ export function UploadSection() {
                       <p>🧠 {transactionAnalysis ? Object.keys(transactionAnalysis.patterns || {}).filter(k => transactionAnalysis.patterns?.[k]?.count > 0).length : 0} patterns identified</p>
                       <p>💡 {transactionAnalysis?.insights.length || 0} AI insights generated</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={resetUpload}
-                      className="border-wine/30 text-wine/70 hover:bg-wine/5"
-                    >
-                      Upload More Files
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowAIInsights(true)}
+                        className="bg-plum hover:bg-plum/90 text-white"
+                      >
+                        <Brain size={16} className="mr-2" />
+                        View AI Insights
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={resetUpload}
+                        className="border-wine/30 text-wine/70 hover:bg-wine/5"
+                      >
+                        Upload More Files
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -914,6 +986,53 @@ export function UploadSection() {
               </div>
             </CardContent>
           </Card>
+        )}
+        
+        {/* Advanced AI Insights Dashboard */}
+        {showAIInsights && processedTransactions.length > 0 && transactionAnalysis && (
+          <div className="mt-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-wine mb-2">🤖 Advanced AI Financial Insights</h2>
+                <p className="text-wine/70">Comprehensive analysis powered by Machine Learning and Large Language Models</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowAIInsights(false)}
+                className="border-wine/30 text-wine/70 hover:bg-wine/5"
+              >
+                <X size={16} className="mr-2" />
+                Hide Insights
+              </Button>
+            </div>
+            
+            <AIInsights
+              transactions={processedTransactions}
+              totalIncome={transactionAnalysis.summary.totalIncome}
+              totalExpenses={transactionAnalysis.summary.totalExpenses}
+              onCategoryUpdate={(transactionId: string, newCategory: string) => {
+                // Update transaction category and provide feedback to ML model
+                setProcessedTransactions(prev => 
+                  prev.map(t => t.id === transactionId ? { ...t, category: newCategory } : t)
+                );
+                
+                // Provide feedback to ML service for continuous learning
+                const transaction = processedTransactions.find(t => t.id === transactionId);
+                if (transaction) {
+                  MLService.learnFromFeedback(
+                    transactionId,
+                    transaction.category,
+                    newCategory,
+                    { description: transaction.description, amount: transaction.amount }
+                  );
+                }
+                
+                toast.success('Category updated and AI model improved!', {
+                  description: 'Your feedback helps improve future categorization accuracy'
+                });
+              }}
+            />
+          </div>
         )}
       </div>
     </section>
