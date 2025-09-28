@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2, X, TrendingUp, TrendingDown, PieChart, AlertTriangle, Info, Target, Activity, Brain, Zap } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { DatabaseAPI, API_CONFIG } from "../utils/supabase/client";
@@ -71,7 +71,7 @@ export function UploadSection() {
   const [isProcessed, setIsProcessed] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [transactionAnalysis, setTransactionAnalysis] = useState<any>(null);
+  const [transactionAnalysis, setTransactionAnalysis] = useState<AIAnalysisResult | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [analysisTab, setAnalysisTab] = useState<"patterns" | "categories" | "insights">("patterns");
@@ -85,9 +85,7 @@ export function UploadSection() {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     ];
     const validExtensions = [".pdf", ".csv", ".xls", ".xlsx"];
-    
-    return validTypes.includes(file.type) || 
-           validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    return validTypes.includes(file.type) || validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
   };
 
   // Advanced AI-Powered Analysis Functions
@@ -118,14 +116,12 @@ export function UploadSection() {
       const totalIncome = aiTransactions
         .filter(t => t.transaction_type === 'credit')
         .reduce((sum, t) => sum + t.amount, 0);
-      
       const totalExpenses = aiTransactions
         .filter(t => t.transaction_type === 'debit')
         .reduce((sum, t) => sum + t.amount, 0);
-
       const netSavings = totalIncome - totalExpenses;
       const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
-
+      
       // Convert financial patterns to expected format
       const patterns: { [key: string]: any } = {};
       financialPatterns.forEach(pattern => {
@@ -181,7 +177,6 @@ export function UploadSection() {
           potential: 0
         }
       };
-
       taxOptimizations.forEach(opt => {
         if (opt.section === '80C') {
           taxOptimization.section80C = {
@@ -214,7 +209,6 @@ export function UploadSection() {
         cibilFactors, // Additional AI analysis
         financialPatterns // Raw pattern data for advanced views
       };
-
     } catch (error) {
       console.error('AI Analysis Error:', error);
       // Fallback to basic analysis if AI service fails
@@ -227,14 +221,12 @@ export function UploadSection() {
     const totalIncome = transactions
       .filter(t => t.transaction_type === 'credit')
       .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
-    
     const totalExpenses = transactions
       .filter(t => t.transaction_type === 'debit')
       .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
-
     const netSavings = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
-
+    
     // Basic categorization
     const categories: { [key: string]: number } = {};
     const patterns: { [key: string]: any } = {
@@ -243,24 +235,23 @@ export function UploadSection() {
       utilities: { count: 0, amount: 0, transactions: [] },
       others: { count: 0, amount: 0, transactions: [] }
     };
-
+    
     transactions.forEach(txn => {
       const amount = Math.abs(parseFloat(txn.amount) || 0);
       const category = txn.category || 'Others';
-      
       categories[category] = (categories[category] || 0) + amount;
       
       // Basic pattern mapping
       const patternKey = category.toLowerCase().includes('salary') ? 'salary' :
-                        category.toLowerCase().includes('emi') ? 'emi' :
-                        category.toLowerCase().includes('electric') || category.toLowerCase().includes('water') ? 'utilities' :
-                        'others';
+                         category.toLowerCase().includes('emi') ? 'emi' :
+                         category.toLowerCase().includes('electric') || category.toLowerCase().includes('water') ? 'utilities' :
+                         'others';
       
       patterns[patternKey].count++;
       patterns[patternKey].amount += amount;
       patterns[patternKey].transactions.push(txn);
     });
-
+    
     return {
       summary: {
         totalTransactions: transactions.length,
@@ -288,21 +279,19 @@ export function UploadSection() {
     };
   };
 
-
-
   const processFiles = async (files: File[]) => {
     if (!user || !session?.access_token) {
       toast.error("Please log in to upload files");
       return;
     }
-
+    
     const validFiles = files.filter(isValidFileType);
     
     if (validFiles.length === 0) {
       toast.error("Please upload valid files: Bank statements (PDF), Credit card bills, or CSV files");
       return;
     }
-
+    
     setUploadedFiles(validFiles);
     setIsProcessing(true);
     setUploadProgress({});
@@ -344,6 +333,7 @@ export function UploadSection() {
           
           // Step 2: Wait for processing completion
           await new Promise(resolve => setTimeout(resolve, 1000));
+          
           setUploadProgress(prev => ({ ...prev, [file.name]: 80 }));
           
           processedFiles.push({
@@ -355,7 +345,6 @@ export function UploadSection() {
           });
           
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
-          
         } catch (fileError: any) {
           console.error(`Error processing file ${file.name}:`, fileError);
           setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
@@ -404,7 +393,6 @@ export function UploadSection() {
       }
       
       setIsProcessed(true);
-      
     } catch (error: any) {
       console.error("File processing error:", error);
       setProcessingError(error.message || "Failed to process files");
@@ -416,7 +404,7 @@ export function UploadSection() {
       setUploadProgress({});
     }
   };
-  
+
   const determineFileType = (file: File): string => {
     const fileName = file.name.toLowerCase();
     if (fileName.includes('bank') || fileName.includes('statement')) {
@@ -427,7 +415,7 @@ export function UploadSection() {
       return 'csv';
     }
   };
-
+  
   const handleFileUpload = () => {
     if (!user) {
       window.dispatchEvent(new CustomEvent("openAuthModal"));
@@ -435,7 +423,7 @@ export function UploadSection() {
     }
     fileInputRef.current?.click();
   };
-
+  
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
@@ -457,12 +445,12 @@ export function UploadSection() {
       processFiles(files);
     }
   };
-
+  
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
   };
-
+  
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -486,7 +474,6 @@ export function UploadSection() {
             Upload your financial documents and get AI-powered transaction analysis with tax optimization insights.
           </p>
         </div>
-
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* Upload Area */}
           <Card className="border border-wine/20">
@@ -547,7 +534,14 @@ export function UploadSection() {
                           <span>{Math.round(progress)}%</span>
                         </div>
                         <Progress value={progress} className="h-2" />
-                        <div className=\"text-xs text-wine/50\">\n                          {progress < 20 ? '📄 Extracting transaction data...' :\n                           progress < 40 ? '🧠 AI parsing financial patterns...' :\n                           progress < 60 ? '🔍 Analyzing spending behavior...' :\n                           progress < 80 ? '� Calculating tax optimization...' :\n                           progress < 95 ? '� Generating personalized insights...' : \n                           '✅ AI analysis complete!'}\n                        </div>
+                        <div className="text-xs text-wine/50">
+                          {progress < 20 ? '📄 Extracting transaction data...' :
+                           progress < 40 ? '🧠 AI parsing financial patterns...' :
+                           progress < 60 ? '🔍 Analyzing spending behavior...' :
+                           progress < 80 ? '💡 Calculating tax optimization...' :
+                           progress < 95 ? '✨ Generating personalized insights...' : 
+                           '✅ AI analysis complete!'}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -561,7 +555,7 @@ export function UploadSection() {
                     <div className="text-sm text-wine/60 space-y-1">
                       <p>📊 {uploadedFiles.length} file(s) processed</p>
                       <p>🔢 {transactionAnalysis?.summary.totalTransactions || 0} transactions analyzed</p>
-                      <p>🧠 {Object.keys(transactionAnalysis?.patterns || {}).filter(k => transactionAnalysis?.patterns[k].count > 0).length} patterns identified</p>
+                      <p>🧠 {transactionAnalysis ? Object.keys(transactionAnalysis.patterns || {}).filter(k => transactionAnalysis.patterns?.[k]?.count > 0).length : 0} patterns identified</p>
                       <p>💡 {transactionAnalysis?.insights.length || 0} AI insights generated</p>
                     </div>
                     <Button
@@ -601,7 +595,6 @@ export function UploadSection() {
                   </div>
                 )}
               </div>
-
               <input
                 ref={fileInputRef}
                 type="file"
@@ -612,7 +605,7 @@ export function UploadSection() {
               />
             </CardContent>
           </Card>
-
+          
           {/* Transaction Analysis Results */}
           <Card className="border border-wine/20">
             <CardHeader>
@@ -651,7 +644,7 @@ export function UploadSection() {
                       </div>
                     </div>
                   </div>
-
+                  
                   {/* Analysis Tabs */}
                   <div className="border-b border-wine/20">
                     <div className="flex space-x-8">
@@ -670,7 +663,7 @@ export function UploadSection() {
                       ))}
                     </div>
                   </div>
-
+                  
                   {/* Tab Content */}
                   <AnimatePresence mode="wait">
                     {analysisTab === "patterns" && (
@@ -691,8 +684,8 @@ export function UploadSection() {
                                   </div>
                                   <div className="text-sm text-wine/60">
                                     {data.count} transaction{data.count > 1 ? "s" : ""}
-                                    {data.emiToIncomeRatio && `  ${data.emiToIncomeRatio}% of income`}
-                                    {data.investmentRate && `  ${data.investmentRate}% investment rate`}
+                                    {data.emiToIncomeRatio && ` • ${data.emiToIncomeRatio}% of income`}
+                                    {data.investmentRate && ` • ${data.investmentRate}% investment rate`}
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -706,7 +699,6 @@ export function UploadSection() {
                         </div>
                       </motion.div>
                     )}
-
                     {analysisTab === "categories" && (
                       <motion.div
                         key="categories"
@@ -732,7 +724,6 @@ export function UploadSection() {
                         })}
                       </motion.div>
                     )}
-
                     {analysisTab === "insights" && (
                       <motion.div
                         key="insights"
@@ -797,8 +788,8 @@ export function UploadSection() {
                                       {insight.title}
                                     </h4>
                                     {insight.priority && (
-                                      <Badge 
-                                        variant="outline" 
+                                      <Badge
+                                        variant="outline"
                                         className={`text-xs ${
                                           insight.priority === 'high' ? 'border-red-300 text-red-700' :
                                           insight.priority === 'medium' ? 'border-yellow-300 text-yellow-700' :
@@ -858,7 +849,7 @@ export function UploadSection() {
             </CardContent>
           </Card>
         </div>
-
+        
         {/* Tax Optimization Section */}
         {transactionAnalysis && (
           <Card className="border border-wine/20">
@@ -889,13 +880,13 @@ export function UploadSection() {
                     {transactionAnalysis.taxOptimization.section80C.potential > 0 && (
                       <div className="mt-3 p-3 bg-blue-100 rounded-lg">
                         <p className="text-xs text-blue-800">
-                           You can save additional ₹{(transactionAnalysis.taxOptimization.section80C.potential * 0.3).toLocaleString()} in taxes by investing ₹{transactionAnalysis.taxOptimization.section80C.potential.toLocaleString()} more
+                          💡 You can save additional ₹{(transactionAnalysis.taxOptimization.section80C.potential * 0.3).toLocaleString()} in taxes by investing ₹{transactionAnalysis.taxOptimization.section80C.potential.toLocaleString()} more
                         </p>
                       </div>
                     )}
                   </div>
                 </div>
-
+                
                 <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
                   <h3 className="font-semibold text-green-900 mb-4">Section 80D (Health)</h3>
                   <div className="space-y-3">
@@ -914,7 +905,7 @@ export function UploadSection() {
                     {transactionAnalysis.taxOptimization.section80D.potential > 0 && (
                       <div className="mt-3 p-3 bg-green-100 rounded-lg">
                         <p className="text-xs text-green-800">
-                           Consider additional health coverage for ₹{(transactionAnalysis.taxOptimization.section80D.potential * 0.3).toLocaleString()} tax savings
+                          💚 Consider additional health coverage for ₹{(transactionAnalysis.taxOptimization.section80D.potential * 0.3).toLocaleString()} tax savings
                         </p>
                       </div>
                     )}
