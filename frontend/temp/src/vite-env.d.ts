@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_CIBIL_ANALYSIS: string
   readonly VITE_DEBUG_MODE: string
   readonly VITE_LOG_LEVEL: string
+  readonly VITE_OPENAI_API_KEY: string
+  readonly VITE_ML_API_ENDPOINT: string
 }
 
 interface ImportMeta {

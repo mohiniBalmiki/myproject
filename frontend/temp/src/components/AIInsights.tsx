@@ -11,6 +11,7 @@ interface AIInsightsProps {
   totalIncome: number;
   totalExpenses: number;
   onCategoryUpdate?: (transactionId: string, newCategory: string) => void;
+  analysisData?: any;
 }
 
 interface InsightTab {
@@ -23,7 +24,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({
   transactions,
   totalIncome,
   totalExpenses,
-  onCategoryUpdate
+  onCategoryUpdate,
+  analysisData
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,8 +54,11 @@ const AIInsights: React.FC<AIInsightsProps> = ({
   useEffect(() => {
     if (transactions.length > 0) {
       generateInsights();
+    } else if (analysisData) {
+      // Use the provided analysis data if transactions are not available
+      setLlmInsights(analysisData.insights || []);
     }
-  }, [transactions, totalIncome, totalExpenses]);
+  }, [transactions, totalIncome, totalExpenses, analysisData]);
 
   const initializeAI = async () => {
     try {

@@ -41,7 +41,7 @@ export interface FinancialContext {
 
 export class LLMService {
   private static config: LLMConfig = {
-    apiKey: process.env.REACT_APP_OPENAI_API_KEY || '',
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY || '',
     model: 'gpt-4o',
     baseURL: 'https://api.openai.com/v1',
     maxTokens: 1500,

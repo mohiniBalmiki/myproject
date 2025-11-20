@@ -28,7 +28,7 @@ function MainApp() {
 
   const handleDemo = () => {
     setIsDemoMode(true);
-    // Smooth scroll to features section
+    // Smooth scroll to features section  
     const element = document.querySelector('#features');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -76,37 +76,37 @@ function MainApp() {
         onDemo={handleDemo}
       />
     
-    <main>
-      {user ? (
-        // Authenticated user view with personalized dashboard
-        <>
-          <DashboardSection />
-          <UploadSection />
-          <TaxOptimizerSection />
-          <CibilAdvisorSection />
-          <ReportsSection />
-          <ProfileSection />
-          <FAQSection />
-        </>
-      ) : (
-        // Non-authenticated user view with hero section
-        <>
-          <HeroSection 
-            onExploreDemo={handleExploreDemo}
-            onLoginClick={handleLoginClick}
-          />
-          <FeaturesSection />
-          <UploadSection />
-          <TaxOptimizerSection />
-          <CibilAdvisorSection />
-          <ReportsSection />
-          <ProfileSection />
-          <FAQSection />
-        </>
-      )}
-    </main>
-    
-    <Footer />
+      <main>
+        {user ? (
+          // Authenticated user view with personalized dashboard
+          <>
+            <DashboardSection />
+            <UploadSection />
+            <TaxOptimizerSection />
+            <CibilAdvisorSection />
+            <ReportsSection />
+            <ProfileSection />
+            <FAQSection />
+          </>
+        ) : (
+          // Non-authenticated user view with hero section
+          <>
+            <HeroSection 
+              onExploreDemo={handleExploreDemo}
+              onLoginClick={handleLoginClick}
+            />
+            <FeaturesSection />
+            <UploadSection />
+            <TaxOptimizerSection />
+            <CibilAdvisorSection />
+            <ReportsSection />
+            <ProfileSection />
+            <FAQSection />
+          </>
+        )}
+      </main>
+      
+      <Footer />
 
       {/* Demo Mode Indicator */}
       {isDemoMode && (

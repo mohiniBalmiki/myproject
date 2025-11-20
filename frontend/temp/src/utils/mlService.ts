@@ -44,7 +44,7 @@ export interface ModelMetrics {
 
 export class MLService {
   private static config: MLModelConfig = {
-    apiEndpoint: process.env.REACT_APP_ML_API_ENDPOINT || 'http://localhost:5000/api/ml',
+    apiEndpoint: import.meta.env.VITE_ML_API_ENDPOINT || 'http://localhost:5000/api/ml',
     modelVersion: '1.0.0',
     confidenceThreshold: 0.7,
     enableOnlineLearning: true

@@ -71,6 +71,32 @@
 
 @layer theme {
   :root, :host {
+    /* Custom theme colors */
+    --wine: #722F37;
+    --lemon-green: #9ACD32;
+    --plum: #8E4585;
+    --background: #ffffff;
+    --foreground: #000000;
+    --card: #ffffff;
+    --card-foreground: #000000;
+    --primary: #722F37;
+    --primary-foreground: #ffffff;
+    --secondary: #f4f4f4;
+    --secondary-foreground: #000000;
+    --muted: #f4f4f4;
+    --muted-foreground: #6b7280;
+    --accent: #9ACD32;
+    --accent-foreground: #000000;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --input-background: #ffffff;
+    --ring: #722F37;
+    --popover: #ffffff;
+    --popover-foreground: #000000;
+    --radius: 0.5rem;
+    
     --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --color-red-100: oklch(.936 .032 17.717);
@@ -264,7 +290,6 @@
   }
 
   img, svg, video, canvas, audio, iframe, embed, object {
-    vertical-align: middle;
     display: block;
   }
 
@@ -2910,6 +2935,7 @@
 
   :is(.\*\:data-\[slot\=select-value\]\:line-clamp-1 > *)[data-slot="select-value"] {
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
     display: -webkit-box;
     overflow: hidden;
